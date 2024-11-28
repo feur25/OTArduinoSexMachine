@@ -18,7 +18,7 @@ private:
 
     String generateRandomData() {
         int randomValue = random(1, 21);
-        String type = random(0, 2) == 0 ? "entree" : "sortie";
+        String type = random(0, 2) == 0 ? "merdouille" : "commo on";
 
         String jsonData = "{\"timestamp\": \"" + getTimestamp() + "\", ";
         jsonData += "\"value\": " + String(randomValue) + ", ";

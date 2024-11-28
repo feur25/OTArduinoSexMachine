@@ -21,10 +21,6 @@
 #include "esp_wpa2.h"
 #endif
 
-String FirmwareVer = { "1.5" };
-
-#define DEBUG_ESP_HTTP_UPDATE 1
-
 class WiFiManager {
 private:
     const char* ssid;
@@ -86,24 +82,14 @@ public:
 
         HTTPUpdateResult ret = httpUpdate.update(client, URL_fw_Bin);
 
-        switch (ret) {
-            case HTTP_UPDATE_FAILED:
-                Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-                break;
-
-            case HTTP_UPDATE_NO_UPDATES:
-                Serial.println("HTTP_UPDATE_NO_UPDATES: No update available");
-                break;
-
-            case HTTP_UPDATE_OK:
-                Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
-                ESP.restart();
-                break;
-        }
+        if (ret == HTTP_UPDATE_FAILED) {
+            Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+        } 
+        else if (ret == HTTP_UPDATE_NO_UPDATES) Serial.println("HTTP_UPDATE_NO_UPDATES: No update available");
+        else if (ret == HTTP_UPDATE_OK) Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
     }
 
     static int firmwareVersionCheck() {
-        String payload;
         WiFiClientSecure client;
         client.setInsecure();
         HTTPClient https;
@@ -161,7 +147,6 @@ public:
         OTAHandler::handleOTA();
 
         currentMillis = millis();
-        Serial.println("Sending data...");
 
         if (currentMillis - previousMillis >= interval) {
             previousMillis = currentMillis;
