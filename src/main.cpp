@@ -5,6 +5,7 @@
 #include <ArduinoOTA.h>
 #include <time.h>
 #include <ESPAsyncHTTPUpdateServer.h>
+
 #include <esp_wifi.h>
 
 #include "Secrets.h"
@@ -20,7 +21,7 @@
 #include "esp_wpa2.h"
 #endif
 
-String FirmwareVer = { "1.2" };
+String FirmwareVer = { "1.4" };
 
 class WiFiManager {
 private:
