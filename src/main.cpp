@@ -20,7 +20,7 @@
 #include "esp_wpa2.h"
 #endif
 
-String FirmwareVer = { "1.1" };
+String FirmwareVer = { "1.2" };
 
 class WiFiManager {
 private:
@@ -90,12 +90,6 @@ public:
         else if (ret == HTTP_UPDATE_OK) Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
     }
 
-    int httpsEnd(int httpCode, HTTPClient& https, String message) {
-        Serial.println(message);
-        https.end();
-        return httpCode;
-    }
-
     static int firmwareVersionCheck() {
         String payload;
         int httpCode;
@@ -105,20 +99,23 @@ public:
 
         if (https.begin(client, URL_fw_Version)) {
             httpCode = https.GET();
-
-            if (httpCode != HTTP_CODE_OK) {
+            if (httpCode == HTTP_CODE_OK) {
+                payload = https.getString();
+                payload.trim();
                 https.end();
-                return 0;
+
+                if (payload.equals(FirmwareVer)) {
+                    Serial.println("Already on the latest firmware");
+                    return 0;
+                } else {
+                    Serial.println("New firmware detected: " + payload);
+                    return 1;
+                }
+            } else {
+                Serial.println("Error fetching version info");
+                https.end();
             }
-
-            payload = https.getString();
-            payload.trim();
-
-            if (payload.equals(FirmwareVer)) otaHandler.httpsEnd(httpCode, https, "Firmware is Already Updated");
-            else otaHandler.httpsEnd(httpCode, https, "New Firmware Available");
-        } 
-        else Serial.println("Unable to connect to update server");
-
+        }
         return 0;
     }
 };
