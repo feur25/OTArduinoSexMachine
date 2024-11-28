@@ -161,6 +161,7 @@ public:
         OTAHandler::handleOTA();
 
         currentMillis = millis();
+        Serial.println("Sending data...");
 
         if (currentMillis - previousMillis >= interval) {
             previousMillis = currentMillis;
