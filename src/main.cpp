@@ -82,11 +82,20 @@ public:
 
         HTTPUpdateResult ret = httpUpdate.update(client, URL_fw_Bin);
 
-        if (ret == HTTP_UPDATE_FAILED) {
-            Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-        } 
-        else if (ret == HTTP_UPDATE_NO_UPDATES) Serial.println("HTTP_UPDATE_NO_UPDATES: No update available");
-        else if (ret == HTTP_UPDATE_OK) Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
+        switch (ret) {
+            case HTTP_UPDATE_FAILED:
+                Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+                break;
+
+            case HTTP_UPDATE_NO_UPDATES:
+                Serial.println("HTTP_UPDATE_NO_UPDATES: No update available");
+                break;
+
+            case HTTP_UPDATE_OK:
+                Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
+                ESP.restart();
+                break;
+        }
     }
 
     static int firmwareVersionCheck() {
@@ -151,7 +160,7 @@ public:
         if (currentMillis - previousMillis >= interval) {
             previousMillis = currentMillis;
 
-            dataSender.send();
+            // dataSender.send();
 
             if (OTAHandler::firmwareVersionCheck()) OTAHandler::firmwareUpdate();
         }
