@@ -20,7 +20,7 @@
 #include "esp_wpa2.h"
 #endif
 
-String FirmwareVer = { "1.1" };
+String FirmwareVer = { "1.2" };
 
 class WiFiManager {
 private:
