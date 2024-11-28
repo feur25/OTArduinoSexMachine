@@ -160,7 +160,7 @@ public:
         if (currentMillis - previousMillis >= interval) {
             previousMillis = currentMillis;
 
-            // dataSender.send();
+            dataSender.send();
 
             if (OTAHandler::firmwareVersionCheck()) OTAHandler::firmwareUpdate();
         }
