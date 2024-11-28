@@ -23,6 +23,8 @@
 
 String FirmwareVer = { "1.4" };
 
+#define DEBUG_ESP_HTTP_UPDATE 1
+
 class WiFiManager {
 private:
     const char* ssid;
@@ -95,19 +97,19 @@ public:
 
             case HTTP_UPDATE_OK:
                 Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
+                ESP.restart();
                 break;
         }
     }
 
     static int firmwareVersionCheck() {
         String payload;
-        int httpCode;
         WiFiClientSecure client;
         client.setInsecure();
         HTTPClient https;
 
         if (https.begin(client, URL_fw_Version)) {
-            httpCode = https.GET();
+            int httpCode = https.GET();
             if (httpCode == HTTP_CODE_OK) {
                 payload = https.getString();
                 payload.trim();
@@ -118,15 +120,18 @@ public:
                     return 0;
                 } else {
                     Serial.println("New firmware detected: " + payload);
+                    FirmwareVer = payload;
                     return 1;
                 }
             } else {
                 Serial.println("Error fetching version info");
                 https.end();
+                return 0;
             }
         }
         return 0;
     }
+
 };
 
 class ESP32App {
