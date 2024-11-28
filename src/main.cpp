@@ -7,7 +7,8 @@
 #include <ESPAsyncHTTPUpdateServer.h>
 #include <esp_wifi.h>
 
-#include "secrets.h"
+#include "Secrets.h"
+#include "DataSender.cpp"
 
 #ifndef LED_BUILTIN
 #define LED_BUILTIN 2
@@ -19,7 +20,7 @@
 #include "esp_wpa2.h"
 #endif
 
-String FirmwareVer = { "1.0" };
+String FirmwareVer = { "1.1" };
 
 class WiFiManager {
 private:
@@ -51,7 +52,7 @@ public:
         WiFi.begin(ssid);
 
         attempts = 0;
-        
+
         while (WiFi.status() != WL_CONNECTED && attempts++ < connectionTimeout) delay(1000), Serial.print(".");
 
         if (WiFi.status() == WL_CONNECTED) Serial.println("\nWiFi Connected! \n IP Address: " + WiFi.localIP().toString());
@@ -126,18 +127,22 @@ class ESP32App {
 private:
     WiFiManager wifiManager;
     ESPAsyncHTTPUpdateServer httpUpdate;
+    DataSender dataSender;
     unsigned long previousMillis;
     unsigned long currentMillis;
     const long interval;
 
 public:
-    ESP32App(const char* ssid, const char* eapIdentity, const char* eapPassword)
-        : wifiManager(ssid, eapIdentity, eapPassword), httpUpdate(), previousMillis(0), interval(60000) {}
+    ESP32App(const char* ssid, const char* eapIdentity, const char* eapPassword, const String& apiUrl)
+        : wifiManager(ssid, eapIdentity, eapPassword), dataSender(apiUrl), httpUpdate(), previousMillis(0), interval(60000) {}
 
     void setup() {
         Serial.begin(115200);
+
         wifiManager.connect();
+
         OTAHandler::setupOTA();
+        TimeManager::configure();
     }
 
     void loop() {
@@ -149,12 +154,14 @@ public:
         if (currentMillis - previousMillis >= interval) {
             previousMillis = currentMillis;
 
+            dataSender.send();
+
             if (OTAHandler::firmwareVersionCheck()) OTAHandler::firmwareUpdate();
         }
     }
 };
 
-ESP32App app(ssid, EAP_IDENTITY, EAP_PASSWORD);
+ESP32App app(ssid, EAP_IDENTITY, EAP_PASSWORD, api_url);
 
 void setup() { app.setup(); }
 void loop() { app.loop(); }
