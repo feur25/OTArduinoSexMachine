@@ -11,6 +11,9 @@
 #include "Secrets.h"
 #include "DataSender.cpp"
 
+using namespace std;
+using namespace Services;
+
 #ifndef LED_BUILTIN
 #define LED_BUILTIN 2
 #endif
@@ -26,6 +29,7 @@ private:
     const char* ssid;
     const char* eapIdentity;
     const char* eapPassword;
+
     int connectionTimeout;
     int attempts;
 
@@ -68,6 +72,7 @@ public:
 class OTAHandler {
 private:
     static OTAHandler otaHandler;
+    
 public:
     static void setupOTA() { ArduinoOTA.begin(); }
 
@@ -84,44 +89,48 @@ public:
 
         switch (ret) {
             case HTTP_UPDATE_FAILED:
-                Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+                logs += Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
                 break;
 
             case HTTP_UPDATE_NO_UPDATES:
-                Serial.println("HTTP_UPDATE_NO_UPDATES: No update available");
+                logs += Serial.println("HTTP_UPDATE_NO_UPDATES: No update available");
                 break;
 
             case HTTP_UPDATE_OK:
-                Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
+                logs += Serial.println("HTTP_UPDATE_OK: Firmware updated successfully");
                 ESP.restart();
                 break;
         }
     }
 
+    int handleUpdate(int option) {
+        String message = option == 1 ? "New firmware detected: " + payload : "Already on the latest firmware";
+
+        logs += Serial.println(message);
+
+        return option;
+    }
+
     static int firmwareVersionCheck() {
         WiFiClientSecure client;
-        client.setInsecure();
         HTTPClient https;
+        
+        client.setInsecure();
 
         if (https.begin(client, URL_fw_Version)) {
             int httpCode = https.GET();
-            if (httpCode == HTTP_CODE_OK) {
-                payload = https.getString();
-                payload.trim();
-                https.end();
 
-                if (payload.equals(FirmwareVer)) {
-                    Serial.println("Already on the latest firmware");
-                    return 0;
-                } else {
-                    Serial.println("New firmware detected: " + payload);
-                    FirmwareVer = payload;
-                    return 1;
-                }
+            if (httpCode != HTTP_CODE_OK) return 0;
+
+            payload = https.getString();
+            payload.trim();
+            https.end();
+
+            if (payload.equals(FirmwareVer)) {
+                otaHandler.handleUpdate(0);
             } else {
-                Serial.println("Error fetching version info");
-                https.end();
-                return 0;
+                FirmwareVer = payload;
+                otaHandler.handleUpdate(1);
             }
         }
         return 0;
@@ -131,16 +140,29 @@ public:
 
 class ESP32App {
 private:
+    const char** apiUrls;
+
+    DataSender* dataSenders;
+
     WiFiManager wifiManager;
     ESPAsyncHTTPUpdateServer httpUpdate;
-    DataSender dataSender;
+
     unsigned long previousMillis;
     unsigned long currentMillis;
+
     const long interval;
 
+    int numUrls;
+
 public:
-    ESP32App(const char* ssid, const char* eapIdentity, const char* eapPassword, const String& apiUrl)
-        : wifiManager(ssid, eapIdentity, eapPassword), dataSender(apiUrl), httpUpdate(), previousMillis(0), interval(60000) {}
+    ESP32App(const char* ssid, const char* eapIdentity, const char* eapPassword, const char* apiUrls[], int numUrls)
+        : wifiManager(ssid, eapIdentity, eapPassword), httpUpdate(), previousMillis(0), interval(60000), apiUrls(apiUrls), numUrls(numUrls) {    
+        dataSenders = new DataSender[numUrls];
+
+        for (int i = 0; i < numUrls; i++) dataSenders[i] = DataSender(apiUrls[i]);
+    }
+
+    ~ESP32App() { delete[] dataSenders; }
 
     void setup() {
         Serial.begin(115200);
@@ -160,14 +182,16 @@ public:
         if (currentMillis - previousMillis >= interval) {
             previousMillis = currentMillis;
 
-            dataSender.send();
+            for (int i = 0; i < numUrls; i++) dataSenders[i].send(i);
 
             if (OTAHandler::firmwareVersionCheck()) OTAHandler::firmwareUpdate();
         }
     }
 };
 
-ESP32App app(ssid, EAP_IDENTITY, EAP_PASSWORD, api_url);
+OTAHandler OTAHandler::otaHandler;
+
+ESP32App app(ssid, EAP_IDENTITY, EAP_PASSWORD, api_url, 2);
 
 void setup() { app.setup(); }
 void loop() { app.loop(); }
