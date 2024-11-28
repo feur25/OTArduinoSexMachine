@@ -21,7 +21,7 @@
 #include "esp_wpa2.h"
 #endif
 
-String FirmwareVer = { "1.4" };
+String FirmwareVer = { "1.5" };
 
 #define DEBUG_ESP_HTTP_UPDATE 1
 
